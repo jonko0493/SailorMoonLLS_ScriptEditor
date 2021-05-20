@@ -1,0 +1,32 @@
+﻿<Window x:Class="SailorMoonLLS_ScriptEditor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SailorMoonLLS_ScriptEditor"
+        mc:Ignorable="d"
+        Title="Sailor Moon La Luna Splende Script Editor" Height="450" Width="800">
+    <Grid>
+        <Menu x:Name="menu" Height="450" VerticalAlignment="Top">
+            <MenuItem x:Name="fileMenuItem" Header="File">
+                <MenuItem x:Name="fileMenuOpen" Header="Open Decompressed NUTR" Click="FileMenuOpen_Click" />
+                <MenuItem x:Name="fileMenuSave" Header="Save Decompressed NUTR" Click="FileMenuSave_Click" />
+                <MenuItem x:Name="fileMenuExtractScript" Header="Extract Script from NUTR" Click="FileMenuExtractScript_Click" />
+            </MenuItem>
+        </Menu>
+        <TabControl x:Name="tabControl" Margin="0,21,0,0">
+            <TabItem Header="Script">
+                <Grid Background="#FFE5E5E5">
+                    <ToolBar x:Name="scriptToolBar" HorizontalAlignment="Center" Height="39" VerticalAlignment="Top" Width="794"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Commands">
+                <Grid Background="#FFE5E5E5">
+                    <ToolBar x:Name="commandsToolBar" HorizontalAlignment="Center" Height="39" VerticalAlignment="Top" Width="794"/>
+                    <ListBox x:Name="commandsListBox" Margin="0,39,0,0"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+    </Grid>
+</Window>
