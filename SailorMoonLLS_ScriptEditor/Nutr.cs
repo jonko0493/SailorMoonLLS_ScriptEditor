@@ -7,24 +7,32 @@ using System.Threading.Tasks;
 
 namespace SailorMoonLLS_ScriptEditor
 {
-    public class NutrRaw
+    public class Nutr
     {
         public byte[] BoilerPlate { get; private set; }
-        public List<NutrRawLine> Script { get; set; } = new List<NutrRawLine>();
+        public List<NutrLine> Script { get; set; } = new List<NutrLine>();
         public List<byte> PostScript { get; set; } = new List<byte>();
         public List<PostScriptCommand> PostScriptCommands { get; set; } = new List<PostScriptCommand>();
         public List<byte> PostPostScript { get; set; } = new List<byte>();
 
-        public static int BoilerPlateLength = 0x1A3;
+        public List<DialogueBox> DialogueBoxes { get; set; } = new List<DialogueBox>();
 
-        public static NutrRaw ParseFromFile(string file)
+        public static int DramaBoilerPlateLength = 0x1A3;
+
+        public enum FileType
+        {
+            DRAMA,
+            INTERFACE,
+        }
+
+        public static Nutr ParseFromFile(string file)
         {
             byte[] data = File.ReadAllBytes(file);
-            NutrRaw nutrRaw = new NutrRaw();
+            Nutr nutr = new Nutr();
             int filePtr;
 
-            nutrRaw.BoilerPlate = data.Take(BoilerPlateLength).ToArray();
-            for (filePtr = BoilerPlateLength; filePtr < data.Length;)
+            nutr.BoilerPlate = data.Take(DramaBoilerPlateLength).ToArray();
+            for (filePtr = DramaBoilerPlateLength; filePtr < data.Length;)
             {
                 int length = BitConverter.ToInt32(new byte[] { data[filePtr], data[filePtr + 1], data[filePtr + 2], data[filePtr + 3] });
                 filePtr += 4;
@@ -39,18 +47,18 @@ namespace SailorMoonLLS_ScriptEditor
 
                 if (text == "suspend")
                 {
-                    nutrRaw.Script.Add(new NutrRawLine { Text = text });
+                    nutr.Script.Add(new NutrLine { Text = text });
                     break;
                 }
 
                 byte[] lineEnd = new byte[] { data[filePtr], data[filePtr + 1], data[filePtr + 2], data[filePtr + 3] };
-                if (!lineEnd.SequenceEqual(NutrRawLine.LineEnd))
+                if (!lineEnd.SequenceEqual(NutrLine.LineEnd))
                 {
                     throw new FileFormatException($"Expected line end after string '{text}' but found sequence '0x{lineEnd[0]:X2} 0x{lineEnd[1]:X2} 0x{lineEnd[2]:X2} 0x{lineEnd[3]:X2}' instead.");
                 }
                 filePtr += 4;
 
-                nutrRaw.Script.Add(new NutrRawLine { Text = text });
+                nutr.Script.Add(new NutrLine { Text = text });
             }
 
             bool encounteredTrapTrap = false;
@@ -69,20 +77,20 @@ namespace SailorMoonLLS_ScriptEditor
                     }
                 }
 
-                nutrRaw.PostScript.Add(data[filePtr]);
+                nutr.PostScript.Add(data[filePtr]);
             }
 
             for (; !(data[filePtr] == 'T' && data[filePtr + 1] == 'R' && data[filePtr + 2] == 'A' && data[filePtr + 3] == 'P');)
             {
                 int lineNumber = BitConverter.ToInt32(new byte[] { data[filePtr], data[filePtr + 1], data[filePtr + 2], data[filePtr + 3] });
-                if (lineNumber > nutrRaw.Script.Count)
+                if (lineNumber > nutr.Script.Count)
                 {
                     break;
                 }
 
-                nutrRaw.PostScriptCommands.Add(new PostScriptCommand
+                nutr.PostScriptCommands.Add(new PostScriptCommand
                 {
-                    LineNumberMaybe = lineNumber,
+                    LineNumber = lineNumber,
                     CommandBytes = new byte[] { data[filePtr + 4], data[filePtr + 5], data[filePtr + 6], data[filePtr + 7] },
                 });
                 filePtr += 8;
@@ -90,17 +98,43 @@ namespace SailorMoonLLS_ScriptEditor
 
             for (; filePtr < data.Length; filePtr++)
             {
-                nutrRaw.PostPostScript.Add(data[filePtr]);
+                nutr.PostPostScript.Add(data[filePtr]);
             }
 
-            return nutrRaw;
+            DialogueBox currentDialogueBox = null;
+            bool msg = false;
+            foreach (var line in nutr.PostScriptCommands)
+            {
+                string text = line.Line(nutr.Script.Select(l => l.Text).ToList());
+
+                if (currentDialogueBox == null && text == "talk_window")
+                {
+                    currentDialogueBox = new DialogueBox();
+                }
+                else if (currentDialogueBox != null && text == "msg")
+                {
+                    msg = true;
+                }
+                else if (msg)
+                {
+                    currentDialogueBox.DialogueLineIndices.Add(line.LineNumber);
+                    msg = false;
+                }
+                else if (currentDialogueBox != null && text == "talk")
+                {
+                    nutr.DialogueBoxes.Add(currentDialogueBox);
+                    currentDialogueBox = null;
+                }
+            }
+
+            return nutr;
         }
 
         public void WriteToFile(string file)
         {
             List<byte> data = new List<byte>();
             data.AddRange(BoilerPlate);
-            foreach (NutrRawLine line in Script)
+            foreach (NutrLine line in Script)
             {
                 data.AddRange(line.ToBytes());
             }
@@ -115,12 +149,11 @@ namespace SailorMoonLLS_ScriptEditor
         }
     }
 
-    public class NutrRawLine
+    public class NutrLine
     {
         public int Length => Encoding.UTF8.GetByteCount(Text);
         public string Text { get; set; }
         public static byte[] LineEnd => new byte[] { 0x10, 0x00, 0x00, 0x08 };
-
 
         public byte[] ToBytes()
         {
@@ -138,21 +171,36 @@ namespace SailorMoonLLS_ScriptEditor
 
     public class PostScriptCommand
     {
-        public int LineNumberMaybe { get; set; }
+        public int LineNumber { get; set; }
         public byte[] CommandBytes { get; set; }
 
         public string Line(List<string> lines)
         {
-            return lines[LineNumberMaybe];
+            return lines[LineNumber];
         }
 
         public byte[] ToBytes()
         {
             List<byte> bytes = new List<byte>();
-            bytes.AddRange(BitConverter.GetBytes(LineNumberMaybe));
+            bytes.AddRange(BitConverter.GetBytes(LineNumber));
             bytes.AddRange(CommandBytes);
 
             return bytes.ToArray();
+        }
+    }
+
+    public class DialogueBox
+    {
+        public List<int> DialogueLineIndices { get; set; } = new List<int>();
+
+        public List<string> DialogueLineStrings(Nutr nutr)
+        {
+            return DialogueLineIndices.Select(i => nutr.Script[i].Text).ToList();
+        }
+
+        public override string ToString()
+        {
+            return string.Join(", ", DialogueLineIndices);
         }
     }
 }

@@ -22,7 +22,7 @@ namespace SailorMoonLLS_ScriptEditor
     /// </summary>
     public partial class MainWindow : Window
     {
-        public NutrRaw Nutr { get; set; }
+        public Nutr NutrFile { get; set; }
 
         public MainWindow()
         {
@@ -37,9 +37,11 @@ namespace SailorMoonLLS_ScriptEditor
             };
             if (openFileDialog.ShowDialog() == true)
             {
-                Nutr = NutrRaw.ParseFromFile(openFileDialog.FileName);
-                commandsListBox.ItemsSource = Nutr.PostScriptCommands.Select(c => $"{c.Line(Nutr.Script.Select(n => n.Text).ToList())} (0x{c.LineNumberMaybe:X2}):\t\t" +
+                NutrFile = Nutr.ParseFromFile(openFileDialog.FileName);
+                commandsListBox.ItemsSource = NutrFile.PostScriptCommands.Select(c => $"{c.Line(NutrFile.Script.Select(n => n.Text).ToList())} (0x{c.LineNumber:X2}):\t\t" +
                     $"0x{string.Join(" ", c.CommandBytes.Select(cb => $"{cb:X2}"))}");
+
+                dialogueListBox.ItemsSource = NutrFile.DialogueBoxes;
             }
         }
 
@@ -51,7 +53,7 @@ namespace SailorMoonLLS_ScriptEditor
             };
             if (saveFileDialog.ShowDialog() == true)
             {
-                Nutr.WriteToFile(saveFileDialog.FileName);
+                NutrFile.WriteToFile(saveFileDialog.FileName);
             }
         }
 
@@ -63,29 +65,62 @@ namespace SailorMoonLLS_ScriptEditor
             };
             if (saveFileDialog.ShowDialog() == true)
             {
-                var scriptText = Nutr.PostScriptCommands.Select(c => c.Line(Nutr.Script.Select(n => n.Text).ToList()));
-                List<string> extractedScript = new List<string>();
-
-                bool message = false;
-                foreach (string line in scriptText)
+                var dialogueBoxes = NutrFile.DialogueBoxes.Select(n => n.DialogueLineStrings(NutrFile)).ToList();
+                for (int i = 0; i < dialogueBoxes.Count; i++)
                 {
-                    if (message)
-                    {
-                        extractedScript.Add(line);
-                        message = false;
-                    }
-                    else if (line == "msg")
-                    {
-                        message = true;
-                    }
-                    else if (line == "talk")
-                    {
-                        extractedScript.Add("\n");
-                    }
+                    dialogueBoxes[i].Add("");
                 }
-
-                File.WriteAllLines(saveFileDialog.FileName, extractedScript.ToArray());
+                File.WriteAllLines(saveFileDialog.FileName, dialogueBoxes.SelectMany(n => n));
             }
+        }
+
+        private void DialogueListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            editStackPanel.Children.Clear();
+
+            if (e.AddedItems.Count == 0)
+            {
+                return;
+            }
+
+            var dialogueBox = (DialogueBox)e.AddedItems[0];
+
+            List<DialogueTextBox> dialogueTextBoxes = new List<DialogueTextBox>();
+            for (int i = 0; i < dialogueBox.DialogueLineIndices.Count; i++)
+            {
+                dialogueTextBoxes.Add(new DialogueTextBox
+                {
+                    Text = NutrFile.Script[dialogueBox.DialogueLineIndices[i]].Text,
+                    DialogueBox = dialogueBox,
+                    LineIndex = dialogueBox.DialogueLineIndices[i],
+                    MaxLength = 20,
+                });
+                dialogueTextBoxes[i].TextChanged += DialogueTextBox_TextChanged;
+                editStackPanel.Children.Add(dialogueTextBoxes[i]);
+            }
+            dialogueTextBoxes.Last().AcceptsReturn = true;
+            dialogueTextBoxes.Last().Height = 100;
+            dialogueTextBoxes.Last().MaxLength = 0;
+            dialogueTextBoxes.Last().MaxLines = 7 - dialogueTextBoxes.Count;
+
+
+        }
+
+        private void DialogueTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var dialogueTextBox = (DialogueTextBox)sender;
+
+            if (dialogueTextBox.MaxLength == 0)
+            {
+                var lines = dialogueTextBox.Text.Split('\n');
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    lines[i] = lines[i].Substring(0, Math.Min(lines[i].Length, 20));
+                }
+                dialogueTextBox.Text = string.Join('\n', lines);
+            }
+
+            NutrFile.Script[dialogueTextBox.LineIndex].Text = dialogueTextBox.Text.Replace("\r", "");
         }
     }
 }
