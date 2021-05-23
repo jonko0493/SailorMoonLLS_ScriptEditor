@@ -17,22 +17,21 @@ namespace SailorMoonLLS_ScriptEditor
 
         public List<DialogueBox> DialogueBoxes { get; set; } = new List<DialogueBox>();
 
-        public static int DramaBoilerPlateLength = 0x1A3;
-
-        public enum FileType
+        public enum FileTypeBPLength // Values are length of boilerplate
         {
-            DRAMA,
-            INTERFACE,
+            DRAMA = 0x1A3,
+            INTERFACE = 0x6D,
+            ITEM = 0x68,
         }
 
-        public static Nutr ParseFromFile(string file)
+        public static Nutr ParseFromFile(string file, FileTypeBPLength fileType)
         {
             byte[] data = File.ReadAllBytes(file);
             Nutr nutr = new Nutr();
             int filePtr;
 
-            nutr.BoilerPlate = data.Take(DramaBoilerPlateLength).ToArray();
-            for (filePtr = DramaBoilerPlateLength; filePtr < data.Length;)
+            nutr.BoilerPlate = data.Take((int)fileType).ToArray();
+            for (filePtr = (int)fileType; filePtr < data.Length;)
             {
                 int length = BitConverter.ToInt32(new byte[] { data[filePtr], data[filePtr + 1], data[filePtr + 2], data[filePtr + 3] });
                 filePtr += 4;
@@ -45,7 +44,7 @@ namespace SailorMoonLLS_ScriptEditor
                 }
                 string text = Encoding.UTF8.GetString(textBytes);
 
-                if (text == "suspend")
+                if ((fileType == FileTypeBPLength.DRAMA && text == "suspend") || (fileType != FileTypeBPLength.DRAMA && text == "getString"))
                 {
                     nutr.Script.Add(new NutrLine { Text = text });
                     break;
@@ -101,29 +100,39 @@ namespace SailorMoonLLS_ScriptEditor
                 nutr.PostPostScript.Add(data[filePtr]);
             }
 
-            DialogueBox currentDialogueBox = null;
-            bool msg = false;
-            foreach (var line in nutr.PostScriptCommands)
+            if (fileType == FileTypeBPLength.DRAMA)
             {
-                string text = line.Line(nutr.Script.Select(l => l.Text).ToList());
+                DialogueBox currentDialogueBox = null;
+                bool msg = false;
+                foreach (var line in nutr.PostScriptCommands)
+                {
+                    string text = line.Line(nutr.Script.Select(l => l.Text).ToList());
 
-                if (currentDialogueBox == null && text == "talk_window")
-                {
-                    currentDialogueBox = new DialogueBox();
+                    if (currentDialogueBox == null && text == "talk_window")
+                    {
+                        currentDialogueBox = new DialogueBox();
+                    }
+                    else if (currentDialogueBox != null && text == "msg")
+                    {
+                        msg = true;
+                    }
+                    else if (msg)
+                    {
+                        currentDialogueBox.DialogueLineIndices.Add(line.LineNumber);
+                        msg = false;
+                    }
+                    else if (currentDialogueBox != null && text == "talk")
+                    {
+                        nutr.DialogueBoxes.Add(currentDialogueBox);
+                        currentDialogueBox = null;
+                    }
                 }
-                else if (currentDialogueBox != null && text == "msg")
+            }
+            else
+            {
+                for (int i = 0; i < nutr.Script.Count; i++ )
                 {
-                    msg = true;
-                }
-                else if (msg)
-                {
-                    currentDialogueBox.DialogueLineIndices.Add(line.LineNumber);
-                    msg = false;
-                }
-                else if (currentDialogueBox != null && text == "talk")
-                {
-                    nutr.DialogueBoxes.Add(currentDialogueBox);
-                    currentDialogueBox = null;
+                    nutr.DialogueBoxes.Add(new DialogueBox { DialogueLineIndices = new List<int> { i } });
                 }
             }
 

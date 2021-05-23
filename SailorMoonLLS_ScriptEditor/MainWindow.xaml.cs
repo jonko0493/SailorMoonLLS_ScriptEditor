@@ -37,7 +37,16 @@ namespace SailorMoonLLS_ScriptEditor
             };
             if (openFileDialog.ShowDialog() == true)
             {
-                NutrFile = Nutr.ParseFromFile(openFileDialog.FileName);
+                Nutr.FileTypeBPLength fileType = Nutr.FileTypeBPLength.DRAMA;
+                if (openFileDialog.FileName.Contains("interface", StringComparison.OrdinalIgnoreCase))
+                {
+                    fileType = Nutr.FileTypeBPLength.INTERFACE;
+                }
+                else if (openFileDialog.FileName.Contains("item", StringComparison.OrdinalIgnoreCase))
+                {
+                    fileType = Nutr.FileTypeBPLength.ITEM;
+                }
+                NutrFile = Nutr.ParseFromFile(openFileDialog.FileName, fileType);
                 commandsListBox.ItemsSource = NutrFile.PostScriptCommands.Select(c => $"{c.Line(NutrFile.Script.Select(n => n.Text).ToList())} (0x{c.LineNumber:X2}):\t\t" +
                     $"0x{string.Join(" ", c.CommandBytes.Select(cb => $"{cb:X2}"))}");
 
