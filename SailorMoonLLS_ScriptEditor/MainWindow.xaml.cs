@@ -111,8 +111,6 @@ namespace SailorMoonLLS_ScriptEditor
             dialogueTextBoxes.Last().Height = 100;
             dialogueTextBoxes.Last().MaxLength = 0;
             dialogueTextBoxes.Last().MaxLines = 7 - dialogueTextBoxes.Count;
-
-
         }
 
         private void DialogueTextBox_TextChanged(object sender, TextChangedEventArgs e)

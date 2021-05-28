@@ -141,6 +141,11 @@ namespace SailorMoonLLS_ScriptEditor
 
         public void WriteToFile(string file)
         {
+            File.WriteAllBytes(file, GetBytes());
+        }
+
+        public byte[] GetBytes()
+        {
             List<byte> data = new List<byte>();
             data.AddRange(BoilerPlate);
             foreach (NutrLine line in Script)
@@ -154,7 +159,7 @@ namespace SailorMoonLLS_ScriptEditor
             }
             data.AddRange(PostPostScript);
 
-            File.WriteAllBytes(file, data.ToArray());
+            return data.ToArray();
         }
     }
 
