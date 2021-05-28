@@ -174,7 +174,7 @@ namespace SailorMoonLLS_ScriptEditor
             List<byte> bytes = new List<byte>();
             bytes.AddRange(BitConverter.GetBytes(Length));
             bytes.AddRange(Encoding.UTF8.GetBytes(Text));
-            if (Text != "suspend")
+            if (Text != "suspend" && Text != "getString")
             {
                 bytes.AddRange(LineEnd);
             }
