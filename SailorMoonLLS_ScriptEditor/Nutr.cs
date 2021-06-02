@@ -102,17 +102,13 @@ namespace SailorMoonLLS_ScriptEditor
 
             if (fileType == FileTypeBPLength.DRAMA)
             {
-                DialogueBox currentDialogueBox = null;
+                DialogueBox currentDialogueBox = new DialogueBox(); ;
                 bool msg = false;
                 foreach (var line in nutr.PostScriptCommands)
                 {
                     string text = line.Line(nutr.Script.Select(l => l.Text).ToList());
 
-                    if (currentDialogueBox == null && text == "talk_window")
-                    {
-                        currentDialogueBox = new DialogueBox();
-                    }
-                    else if (currentDialogueBox != null && text == "msg")
+                    if (text == "msg")
                     {
                         msg = true;
                     }
@@ -124,7 +120,7 @@ namespace SailorMoonLLS_ScriptEditor
                     else if (currentDialogueBox != null && text == "talk")
                     {
                         nutr.DialogueBoxes.Add(currentDialogueBox);
-                        currentDialogueBox = null;
+                        currentDialogueBox = new DialogueBox();
                     }
                 }
             }
