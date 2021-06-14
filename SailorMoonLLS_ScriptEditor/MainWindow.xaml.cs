@@ -121,5 +121,25 @@ namespace SailorMoonLLS_ScriptEditor
 
             NutrFile.Script[dialogueTextBox.LineIndex].Text = dialogueTextBox.Text.Replace("\r", "");
         }
+
+        private void TplToRiffPaletteButton_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog
+            {
+                Filter = "Decompressed TPL File|*.TPL.decompressed"
+            };
+            if (openFileDialog.ShowDialog() == true)
+            {
+                var tileFile = PaletteFile.ParseFromFile(openFileDialog.FileName);
+                SaveFileDialog saveFileDialog = new SaveFileDialog
+                {
+                    Filter = "RIFF Palette File|*.pal"
+                };
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    tileFile.WriteRiffPaletteFile(saveFileDialog.FileName);
+                }
+            }
+        }
     }
 }

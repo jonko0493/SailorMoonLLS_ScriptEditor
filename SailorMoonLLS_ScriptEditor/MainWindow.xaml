@@ -17,7 +17,9 @@
         <TabControl x:Name="tabControl" Margin="0,21,0,0">
             <TabItem Header="Script">
                 <Grid Background="#FFE5E5E5">
-                    <ToolBar x:Name="scriptToolBar" HorizontalAlignment="Center" Height="39" VerticalAlignment="Top" Width="794"/>
+                    <ToolBar x:Name="scriptToolBar" HorizontalAlignment="Center" Height="39" VerticalAlignment="Top" Width="794">
+                        <Button x:Name="tplToRiffPaletteButton" Content="TPL to RIFF" Click="TplToRiffPaletteButton_Click" />
+                    </ToolBar>
                     <ListBox x:Name="dialogueListBox" Margin="0,39,410,0" SelectionChanged="DialogueListBox_SelectionChanged"/>
                     <StackPanel x:Name="editStackPanel" Margin="389,39,0,0" />
                 </Grid>
